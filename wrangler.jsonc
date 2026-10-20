@@ -1,0 +1,8 @@
+{
+  // Cloudflare Workers Static Assets の設定ファイル
+  "name": "331ppp",
+  "compatibility_date": "2026-10-20",
+  "assets": {
+    "directory": "./public"
+  }
+}

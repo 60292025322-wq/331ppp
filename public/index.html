@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>かまってちゃんペット</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #b2f0e0 0%, #a0ebd4 40%, #c8f5e8 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'Courier New', monospace;
+  color: #1a4a3a; padding: 16px;
+}
+.device {
+  background: linear-gradient(160deg, #e8faf4, #d0f5e8);
+  border-radius: 36px; padding: 20px 20px 28px; width: 360px;
+  box-shadow: 0 0 0 3px #7adbb8, 0 0 0 6px #4ec9a0, 0 20px 60px rgba(0,120,80,.18),
+              inset 0 2px 4px rgba(255,255,255,.7);
+  position: relative; user-select: none;
+}
+.device::before {
+  content: ''; position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+  width: 60px; height: 5px;
+  background: repeating-linear-gradient(90deg,#7adbb8 0px,#7adbb8 3px,#d0f5e8 3px,#d0f5e8 6px);
+  border-radius: 3px;
+}
+.device-title {
+  text-align: center; font-size: 11px; letter-spacing: 4px;
+  color: #2a9a72; margin-bottom: 14px; text-shadow: 0 0 8px rgba(42,154,114,.25);
+  font-weight: bold;
+}
+.screen-wrap {
+  background: #4ec9a0; border-radius: 16px; padding: 4px;
+  box-shadow: 0 0 0 2px #2a9a72, inset 0 0 12px rgba(0,80,50,.2); margin-bottom: 20px;
+}
+.screen {
+  width: 320px; height: 320px; background: #c8f0df;
+  border-radius: 13px; position: relative; overflow: hidden;
+}
+.screen::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 20;
+  background: repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(0,0,0,.07) 3px,rgba(0,0,0,.07) 4px);
+  border-radius: 13px;
+}
+.screen.alert-glow { animation: alertGlow 1s ease-in-out 3; }
+@keyframes alertGlow { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 24px 6px rgba(240,192,64,.55)} }
+
+.screen-inner {
+  width: 100%; height: 100%; display: flex; flex-direction: column;
+  padding: 12px 14px 10px; position: relative; z-index: 1;
+}
+.status-bars { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.stat-row {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 9px; color: #1a5c40; font-weight: bold; letter-spacing: 1px;
+}
+.stat-label { width: 36px; }
+.stat-bar-bg {
+  flex: 1; height: 7px; background: #a0d8c0; border-radius: 2px;
+  overflow: hidden; border: 1px solid #4ec9a0;
+}
+.stat-bar { height: 100%; border-radius: 2px; transition: width .4s ease; }
+.bar-hunger  { background: #ef5350; }
+.bar-mood    { background: #ffca28; }
+.bar-hygiene { background: #29b6f6; }
+.stat-val { width: 24px; text-align: right; font-size: 8px; color: #1a5c40; }
+
+.pet-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.poop {
+  position: absolute; font-size: 18px;
+  animation: poopAnim .3s ease; cursor: default;
+}
+@keyframes poopAnim { from{transform:scale(0) rotate(-30deg)} to{transform:scale(1)} }
+
+.speech {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  background: #ffffff; border: 2px solid #4ec9a0; border-radius: 8px;
+  font-size: 9px; color: #1a5c40; padding: 3px 8px; white-space: nowrap;
+  font-weight: bold; letter-spacing: 1px; z-index: 10;
+  animation: speechPop .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow: 0 2px 6px rgba(0,100,60,.15);
+}
+.speech::after {
+  content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  border: 4px solid transparent; border-top-color: #4ec9a0;
+}
+@keyframes speechPop { from{opacity:0;transform:translateX(-50%) scale(.7)} to{opacity:1;transform:translateX(-50%) scale(1)} }
+.speech.warn { background: #fff9c4; border-color: #f9a825; color: #5a3000; }
+.speech.warn::after { border-top-color: #f9a825; }
+.speech.sick { background: #f1f8e9; border-color: #7cb342; color: #1b5e20; }
+
+.pet-sprite { position: relative; }
+.pet-sprite.happy-anim { animation: happyBounce .4s ease; }
+.pet-sprite.eat-anim   { animation: eatAnim .5s ease; }
+.pet-sprite.shake-anim { animation: shake .4s ease; }
+@keyframes happyBounce { 0%,100%{transform:translateY(0)} 40%{transform:translateY(-14px)} 70%{transform:translateY(-6px)} }
+@keyframes eatAnim     { 0%,100%{transform:scale(1)} 40%{transform:scale(1.2,.85)} 70%{transform:scale(.9,1.1)} }
+@keyframes shake       { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 80%{transform:translateX(-4px)} }
+.pet-svg { display: block; }
+
+.age-row { text-align: center; font-size: 8px; color: #1a5c40; letter-spacing: 2px; margin-bottom: 4px; font-weight: bold; }
+
+.overlay {
+  position: absolute; inset: 0; z-index: 15;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 13px; flex-direction: column; gap: 6px;
+  font-family: 'Courier New', monospace;
+}
+.overlay.sick-overlay { background: rgba(60,100,0,.6); color: #d0ff80; }
+.overlay.dead-overlay { background: rgba(0,0,0,.75);   color: #888; }
+.overlay-icon  { font-size: 40px; }
+.overlay-label { font-size: 12px; letter-spacing: 3px; font-weight: bold; }
+.overlay-sub   { font-size: 9px;  letter-spacing: 1px; opacity: .8; }
+
+.btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+.care-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: linear-gradient(160deg, #e0faf2, #c4f0e0);
+  border: 2px solid #7adbb8; border-radius: 50%;
+  width: 64px; height: 64px; cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,120,80,.15), inset 0 1px 3px rgba(255,255,255,.8);
+  transition: transform .1s, box-shadow .1s, border-color .2s;
+  font-family: 'Courier New', monospace;
+}
+.care-btn:hover { border-color: #2a9a72; transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,120,80,.25), 0 0 8px rgba(42,154,114,.3); }
+.care-btn:active { transform: translateY(1px); box-shadow: 0 2px 4px rgba(0,120,80,.1); }
+.care-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-icon  { font-size: 22px; }
+.btn-label { font-size: 8px; color: #2a7a5a; letter-spacing: 1px; font-weight: bold; }
+
+.reset-btn {
+  display: block; margin: 10px auto 0;
+  background: none; border: 1px solid #7adbb8; border-radius: 6px;
+  color: #4aaa88; font-family: 'Courier New', monospace;
+  font-size: 9px; letter-spacing: 2px; padding: 4px 14px;
+  cursor: pointer; transition: color .2s, border-color .2s;
+}
+.reset-btn:hover { color: #e05050; border-color: #e05050; }
+
+/* ── キャラ選択エリア ── */
+.char-select-area {
+  margin-top: 14px;
+  border-top: 1px dashed #7adbb8;
+  padding-top: 12px;
+}
+.char-select-label {
+  text-align: center; font-size: 8px; color: #2a9a72;
+  letter-spacing: 2px; font-weight: bold; margin-bottom: 8px;
+}
+.char-select-row {
+  display: flex; gap: 8px; justify-content: center;
+}
+.char-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: rgba(255,255,255,.5);
+  border: 2px solid #a0ddc8; border-radius: 14px;
+  width: 68px; padding: 6px 4px;
+  cursor: pointer; transition: border-color .2s, background .2s, transform .1s;
+  font-family: 'Courier New', monospace;
+}
+.char-btn:hover { background: rgba(255,255,255,.85); transform: translateY(-2px); border-color: #2a9a72; }
+.char-btn.active {
+  border-color: #f50057; background: rgba(255,220,235,.7);
+  box-shadow: 0 0 0 3px rgba(245,0,87,.15);
+}
+.char-btn svg { display: block; }
+.char-btn-label { font-size: 8px; color: #2a7a5a; font-weight: bold; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="device-title">★ KAMATTE PET ★</div>
+  <div class="screen-wrap">
+    <div class="screen" id="screen">
+      <div class="screen-inner">
+        <div class="status-bars">
+          <div class="stat-row">
+            <span class="stat-label">HUNGER</span>
+            <div class="stat-bar-bg"><div class="stat-bar bar-hunger"  id="barHunger"  style="width:80%"></div></div>
+            <span class="stat-val" id="valHunger">80</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">MOOD</span>
+            <div class="stat-bar-bg"><div class="stat-bar bar-mood"    id="barMood"    style="width:80%"></div></div>
+            <span class="stat-val" id="valMood">80</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">CLEAN</span>
+            <div class="stat-bar-bg"><div class="stat-bar bar-hygiene" id="barHygiene" style="width:100%"></div></div>
+            <span class="stat-val" id="valHygiene">100</span>
+          </div>
+        </div>
+        <div class="pet-area" id="petArea">
+          <div id="speechBubble" class="speech" style="display:none"></div>
+          <div class="pet-sprite" id="petSprite">
+            <svg id="petSvg" class="pet-svg" width="130" height="130" viewBox="0 0 120 120"></svg>
+          </div>
+          <div id="poopContainer"></div>
+          <div id="overlay" style="display:none"></div>
+        </div>
+        <div class="age-row" id="ageRow">AGE: 0 DAYS  ▸  0:00:00</div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="care-btn" id="btnFeed"     onclick="doAction('feed')">
+      <span class="btn-icon">🍙</span><span class="btn-label">ごはん</span>
+    </button>
+    <button class="care-btn" id="btnPlay"     onclick="doAction('play')">
+      <span class="btn-icon">🎮</span><span class="btn-label">あそぶ</span>
+    </button>
+    <button class="care-btn" id="btnClean"    onclick="doAction('clean')">
+      <span class="btn-icon">🧹</span><span class="btn-label">おそうじ</span>
+    </button>
+    <button class="care-btn" id="btnMedicine" onclick="doAction('medicine')">
+      <span class="btn-icon">💊</span><span class="btn-label">おくすり</span>
+    </button>
+  </div>
+  <button class="reset-btn" onclick="resetPet()">RESET</button>
+
+  <!-- キャラ選択 -->
+  <div class="char-select-area">
+    <div class="char-select-label">✦ SELECT YOUR PET ✦</div>
+    <div class="char-select-row" id="charSelectRow">
+
+      <!-- リボンちゃん -->
+      <button class="char-btn active" id="charBtn-ribbon" onclick="selectPet('ribbon')">
+        <svg width="48" height="48" viewBox="0 0 120 120">
+          <circle cx="60" cy="52" r="34" fill="#f3e5f5" stroke="#4a148c" stroke-width="2.5"/>
+          <ellipse cx="60" cy="90" rx="14" ry="11" fill="#f3e5f5" stroke="#4a148c" stroke-width="2"/>
+          <circle cx="48" cy="50" r="4.5" fill="#4a148c"/><circle cx="46" cy="48" r="1.5" fill="white"/>
+          <circle cx="72" cy="50" r="4.5" fill="#4a148c"/><circle cx="70" cy="48" r="1.5" fill="white"/>
+          <path d="M50 62 Q60 70 70 62" stroke="#4a148c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M60 18 C53 12 44 14 46 20 C48 26 57 23 60 18Z" fill="#ff80ab" stroke="#e91e8c" stroke-width="1"/>
+          <path d="M60 18 C67 12 76 14 74 20 C72 26 63 23 60 18Z" fill="#ff80ab" stroke="#e91e8c" stroke-width="1"/>
+          <circle cx="60" cy="19" r="3.5" fill="#f50057"/>
+        </svg>
+        <span class="char-btn-label">リボン</span>
+      </button>
+
+      <!-- くまさん -->
+      <button class="char-btn" id="charBtn-bear" onclick="selectPet('bear')">
+        <svg width="48" height="48" viewBox="0 0 120 120">
+          <circle cx="36" cy="30" r="14" fill="#d7a87a" stroke="#6d3a1f" stroke-width="2"/>
+          <circle cx="84" cy="30" r="14" fill="#d7a87a" stroke="#6d3a1f" stroke-width="2"/>
+          <circle cx="36" cy="31" r="8" fill="#f5c49a"/>
+          <circle cx="84" cy="31" r="8" fill="#f5c49a"/>
+          <circle cx="60" cy="55" r="36" fill="#d7a87a" stroke="#6d3a1f" stroke-width="2.5"/>
+          <ellipse cx="60" cy="95" rx="14" ry="11" fill="#d7a87a" stroke="#6d3a1f" stroke-width="2"/>
+          <ellipse cx="60" cy="65" rx="18" ry="14" fill="#f5c49a"/>
+          <circle cx="48" cy="50" r="5" fill="#3e2000"/><circle cx="46" cy="48" r="1.5" fill="white"/>
+          <circle cx="72" cy="50" r="5" fill="#3e2000"/><circle cx="70" cy="48" r="1.5" fill="white"/>
+          <ellipse cx="60" cy="63" rx="6" ry="4" fill="#c47a4a"/>
+          <path d="M50 70 Q60 78 70 70" stroke="#3e2000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="char-btn-label">くま</span>
+      </button>
+
+      <!-- うさぎさん -->
+      <button class="char-btn" id="charBtn-bunny" onclick="selectPet('bunny')">
+        <svg width="48" height="48" viewBox="0 0 120 120">
+          <ellipse cx="38" cy="22" rx="9" ry="20" fill="#fce4ec" stroke="#e91e8c" stroke-width="2"/>
+          <ellipse cx="82" cy="22" rx="9" ry="20" fill="#fce4ec" stroke="#e91e8c" stroke-width="2"/>
+          <ellipse cx="38" cy="23" rx="5" ry="14" fill="#f48fb1" opacity=".6"/>
+          <ellipse cx="82" cy="23" rx="5" ry="14" fill="#f48fb1" opacity=".6"/>
+          <circle cx="60" cy="56" r="36" fill="#fce4ec" stroke="#e91e8c" stroke-width="2.5"/>
+          <ellipse cx="60" cy="95" rx="14" ry="11" fill="#fce4ec" stroke="#e91e8c" stroke-width="2"/>
+          <circle cx="48" cy="52" r="5" fill="#880e4f"/><circle cx="46" cy="50" r="1.5" fill="white"/>
+          <circle cx="72" cy="52" r="5" fill="#880e4f"/><circle cx="70" cy="50" r="1.5" fill="white"/>
+          <circle cx="60" cy="62" r="4" fill="#f48fb1"/>
+          <path d="M50 68 Q60 76 70 68" stroke="#880e4f" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="char-btn-label">うさぎ</span>
+      </button>
+
+      <!-- おばけさん -->
+      <button class="char-btn" id="charBtn-ghost" onclick="selectPet('ghost')">
+        <svg width="48" height="48" viewBox="0 0 120 120">
+          <path d="M60 8 C35 8 22 28 22 52 C22 76 22 95 32 95 C38 95 42 88 48 88 C54 88 56 95 60 95 C64 95 66 88 72 88 C78 88 82 95 88 95 C98 95 98 76 98 52 C98 28 85 8 60 8Z" fill="#e8eaf6" stroke="#283593" stroke-width="2.5"/>
+          <circle cx="46" cy="50" r="7" fill="white" stroke="#283593" stroke-width="1.5"/>
+          <circle cx="74" cy="50" r="7" fill="white" stroke="#283593" stroke-width="1.5"/>
+          <circle cx="47" cy="51" r="4" fill="#283593"/>
+          <circle cx="75" cy="51" r="4" fill="#283593"/>
+          <circle cx="46" cy="50" r="1.5" fill="white"/>
+          <circle cx="74" cy="50" r="1.5" fill="white"/>
+          <path d="M50 66 Q60 73 70 66" stroke="#283593" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <ellipse cx="37" cy="62" rx="7" ry="5" fill="#c5cae9" opacity=".6"/>
+          <ellipse cx="83" cy="62" rx="7" ry="5" fill="#c5cae9" opacity=".6"/>
+        </svg>
+        <span class="char-btn-label">おばけ</span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+const SAVE_KEY      = 'kamattePet_v4';
+const PET_KEY       = 'kamattePet_charId';
+const TICK_MS       = 3000;
+const DECAY_HUNGER  = 3;
+const DECAY_MOOD    = 2;
+const POOP_INTERVAL = 5;
+
+let currentPetId = localStorage.getItem(PET_KEY) || 'ribbon';
+
+let state = {
+  hunger: 80, mood: 80, hygiene: 100,
+  sick: false, dead: false, poops: 0,
+  born: Date.now(), lastTick: Date.now(),
+};
+let tickCount = 0;
+let speechTimer = null;
+let glowTimer   = null;
+
+/* ════════════════════════════════════════
+   SAVE / LOAD
+════════════════════════════════════════ */
+function saveState() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+}
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && s.born) {
+      state = s;
+      const ticks = Math.min(Math.floor((Date.now() - state.lastTick) / TICK_MS), 60);
+      for (let i = 0; i < ticks; i++) applyDecay(false);
+      state.lastTick = Date.now();
+    }
+  } catch(e) {}
+}
+
+/* ════════════════════════════════════════
+   DECAY
+════════════════════════════════════════ */
+function applyDecay(fx) {
+  if (state.dead) return;
+  if (!state.sick) {
+    state.hunger = Math.max(0, state.hunger - DECAY_HUNGER);
+    state.mood   = Math.max(0, state.mood   - DECAY_MOOD);
+  }
+  tickCount++;
+  if (tickCount % POOP_INTERVAL === 0 && state.poops < 5) {
+    state.poops++;
+    state.hygiene = Math.max(0, state.hygiene - 15);
+    if (fx) spawnPoop();
+  }
+  if (state.hunger <= 0 && !state.sick) {
+    state.sick = true;
+    if (fx) showSpeech('💊 びょうきだよ！', 'sick');
+  }
+  if (state.sick) {
+    state.mood = Math.max(0, state.mood - 3);
+    if (state.mood <= 0) state.dead = true;
+  }
+  state.lastTick = Date.now();
+  if (fx) renderAll();
+  saveState();
+}
+
+/* ════════════════════════════════════════
+   ACTIONS
+════════════════════════════════════════ */
+function doAction(type) {
+  if (state.dead) return;
+  const sprite = document.getElementById('petSprite');
+  if (type === 'feed') {
+    if (state.sick) { showSpeech('💊 まずおくすりを！', 'warn'); return; }
+    state.hunger = Math.min(100, state.hunger + 20);
+    triggerAnim(sprite, 'eat-anim');
+    showSpeech('もぐもぐ♪', 'normal');
+  } else if (type === 'play') {
+    if (state.sick) { showSpeech('💊 まずおくすりを！', 'warn'); return; }
+    state.mood = Math.min(100, state.mood + 20);
+    triggerAnim(sprite, 'happy-anim');
+    showSpeech('やったー！♪', 'normal');
+  } else if (type === 'clean') {
+    state.poops = 0;
+    state.hygiene = Math.min(100, state.hygiene + 40);
+    document.getElementById('poopContainer').innerHTML = '';
+    triggerAnim(sprite, 'happy-anim');
+    showSpeech('きれいになった！', 'normal');
+  } else if (type === 'medicine') {
+    if (!state.sick) { showSpeech('げんきだよ〜', 'normal'); return; }
+    state.sick   = false;
+    state.hunger = Math.min(100, state.hunger + 30);
+    state.mood   = Math.min(100, state.mood   + 20);
+    triggerAnim(sprite, 'happy-anim');
+    showSpeech('なおったよ！ありがとう♪', 'normal');
+  }
+  renderAll();
+  saveState();
+}
+
+/* ════════════════════════════════════════
+   RENDER
+════════════════════════════════════════ */
+function renderAll() {
+  setBar('Hunger',  state.hunger);
+  setBar('Mood',    state.mood);
+  setBar('Hygiene', state.hygiene);
+  drawPet();
+  renderOverlay();
+  if (!state.sick && !state.dead && (state.hunger <= 30 || state.mood <= 30)) {
+    triggerScreenAlert();
+  }
+  renderAge();
+}
+
+function setBar(name, val) {
+  const v = Math.max(0, Math.min(100, Math.round(val)));
+  document.getElementById('bar' + name).style.width = v + '%';
+  document.getElementById('val' + name).textContent = v;
+}
+
+function renderOverlay() {
+  const el = document.getElementById('overlay');
+  if (state.dead) {
+    el.style.display = 'flex';
+    el.className = 'overlay dead-overlay';
+    el.innerHTML = '<div class="overlay-icon">😵</div><div class="overlay-label">...zzz...</div><div class="overlay-sub">RESET してあげてね</div>';
+  } else if (state.sick) {
+    el.style.display = 'flex';
+    el.className = 'overlay sick-overlay';
+    el.innerHTML = '<div class="overlay-icon">🤒</div><div class="overlay-label">びょうき</div><div class="overlay-sub">💊 おくすりをあげてね</div>';
+  } else {
+    el.style.display = 'none';
+  }
+  ['btnFeed','btnPlay','btnClean','btnMedicine'].forEach(id => {
+    document.getElementById(id).disabled = state.dead;
+  });
+}
+
+function renderAge() {
+  const e = Math.floor((Date.now() - state.born) / 1000);
+  const d = Math.floor(e / 86400);
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('ageRow').textContent =
+    `AGE: ${d} DAYS  ▸  ${pad(Math.floor((e%86400)/3600))}:${pad(Math.floor((e%3600)/60))}:${pad(e%60)}`;
+}
+
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function triggerAnim(el, cls) {
+  el.classList.remove('happy-anim','eat-anim','shake-anim');
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), 600);
+}
+
+function showSpeech(text, type) {
+  const el = document.getElementById('speechBubble');
+  if (speechTimer) clearTimeout(speechTimer);
+  el.textContent = text;
+  el.className   = 'speech ' + (type || 'normal');
+  el.style.display = 'block';
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = '';
+  speechTimer = setTimeout(() => { el.style.display = 'none'; }, 2400);
+}
+
+function spawnPoop() {
+  const container = document.getElementById('poopContainer');
+  const petArea   = document.getElementById('petArea');
+  const w = petArea.offsetWidth  || 280;
+  const h = petArea.offsetHeight || 180;
+  const poop = document.createElement('span');
+  poop.className   = 'poop';
+  poop.textContent = '💩';
+  const side = Math.random() < .5 ? -1 : 1;
+  poop.style.left = (w/2 + side * (32 + Math.random()*50)) + 'px';
+  poop.style.top  = (h/2 + 18 + Math.random()*28) + 'px';
+  container.appendChild(poop);
+}
+
+function triggerScreenAlert() {
+  const screen = document.getElementById('screen');
+  if (glowTimer) return;
+  screen.classList.add('alert-glow');
+  glowTimer = setTimeout(() => { screen.classList.remove('alert-glow'); glowTimer = null; }, 3100);
+  const b = document.getElementById('speechBubble');
+  if (b.style.display === 'none') showSpeech('かまって！ 😢', 'warn');
+}
+
+function resetPet() {
+  if (!confirm('ペットをリセットしますか？')) return;
+  localStorage.removeItem(SAVE_KEY);
+  state = { hunger:80, mood:80, hygiene:100, sick:false, dead:false, poops:0, born:Date.now(), lastTick:Date.now() };
+  tickCount = 0;
+  document.getElementById('poopContainer').innerHTML = '';
+  document.getElementById('speechBubble').style.display = 'none';
+  document.getElementById('screen').classList.remove('alert-glow');
+  renderAll();
+  saveState();
+}
+
+/* ════════════════════════════════════════
+   PETS 定義（4種）
+   各キャラは共通の face（happy/normal/sad/cry/sick/dead）に対応した
+   colors と headDeco（頭の上の飾りSVG文字列）を持つ
+════════════════════════════════════════ */
+const PETS = {
+
+  /* ── リボンちゃん ── */
+  ribbon: {
+    name: 'リボン',
+    colors: {
+      happy:  { body:'#fce4ec', belly:'#f8bbd0', out:'#880e4f', cheek:'#ffccbc' },
+      normal: { body:'#f3e5f5', belly:'#ede7f6', out:'#4a148c', cheek:'#f8bbd0' },
+      sad:    { body:'#e3f2fd', belly:'#bbdefb', out:'#1565c0', cheek:'#b3e5fc' },
+      cry:    { body:'#e8eaf6', belly:'#c5cae9', out:'#283593', cheek:'#90caf9' },
+      sick:   { body:'#f1f8e9', belly:'#dcedc8', out:'#33691e', cheek:'#c5e1a5' },
+      dead:   { body:'#eeeeee', belly:'#e0e0e0', out:'#757575', cheek:'#bdbdbd' },
+    },
+    headDeco: (C) => `
+      <path d="M60 24 C52 18 42 20 44 26 C46 32 56 30 60 24Z" fill="#ff80ab" stroke="#e91e8c" stroke-width="1.2"/>
+      <path d="M60 24 C68 18 78 20 76 26 C74 32 64 30 60 24Z" fill="#ff80ab" stroke="#e91e8c" stroke-width="1.2"/>
+      <circle cx="60" cy="25" r="4" fill="#f50057" stroke="#c51162" stroke-width="1"/>
+      <circle cx="59" cy="24" r="1.5" fill="white" opacity=".55"/>`,
+  },
+
+  /* ── くまさん ── */
+  bear: {
+    name: 'くま',
+    colors: {
+      happy:  { body:'#ffe0b2', belly:'#fff3e0', out:'#4e2a04', cheek:'#ffccbc' },
+      normal: { body:'#d7a87a', belly:'#f5c49a', out:'#3e1a00', cheek:'#ffccbc' },
+      sad:    { body:'#bcaaa4', belly:'#d7ccc8', out:'#3e2723', cheek:'#d7ccc8' },
+      cry:    { body:'#b0b0b0', belly:'#d0d0d0', out:'#333',    cheek:'#c0c0c0' },
+      sick:   { body:'#dcedc8', belly:'#f0f4c3', out:'#33691e', cheek:'#c5e1a5' },
+      dead:   { body:'#e0e0e0', belly:'#f5f5f5', out:'#757575', cheek:'#bdbdbd' },
+    },
+    headDeco: (C) => `
+      <!-- 丸耳 -->
+      <circle cx="24" cy="36" r="16" fill="${C.body}" stroke="${C.out}" stroke-width="2"/>
+      <circle cx="96" cy="36" r="16" fill="${C.body}" stroke="${C.out}" stroke-width="2"/>
+      <circle cx="24" cy="37" r="9"  fill="${C.belly}"/>
+      <circle cx="96" cy="37" r="9"  fill="${C.belly}"/>`,
+  },
+
+  /* ── うさぎさん ── */
+  bunny: {
+    name: 'うさぎ',
+    colors: {
+      happy:  { body:'#fce4ec', belly:'#fff9c4', out:'#880e4f', cheek:'#f8bbd0' },
+      normal: { body:'#fce4ec', belly:'#fce4ec', out:'#880e4f', cheek:'#f8bbd0' },
+      sad:    { body:'#e8eaf6', belly:'#c5cae9', out:'#283593', cheek:'#90caf9' },
+      cry:    { body:'#e3f2fd', belly:'#bbdefb', out:'#1565c0', cheek:'#b3e5fc' },
+      sick:   { body:'#f1f8e9', belly:'#dcedc8', out:'#33691e', cheek:'#c5e1a5' },
+      dead:   { body:'#eeeeee', belly:'#e0e0e0', out:'#757575', cheek:'#bdbdbd' },
+    },
+    headDeco: (C) => `
+      <!-- 長い耳 -->
+      <ellipse cx="36" cy="28" rx="10" ry="22" fill="${C.body}" stroke="${C.out}" stroke-width="2"/>
+      <ellipse cx="84" cy="28" rx="10" ry="22" fill="${C.body}" stroke="${C.out}" stroke-width="2"/>
+      <ellipse cx="36" cy="29" rx="5.5" ry="14" fill="#f48fb1" opacity=".65"/>
+      <ellipse cx="84" cy="29" rx="5.5" ry="14" fill="#f48fb1" opacity=".65"/>`,
+  },
+
+  /* ── おばけさん ── */
+  ghost: {
+    name: 'おばけ',
+    colors: {
+      happy:  { body:'#e8eaf6', belly:'#c5cae9', out:'#1a237e', cheek:'#b3e5fc' },
+      normal: { body:'#ede7f6', belly:'#d1c4e9', out:'#311b92', cheek:'#ce93d8' },
+      sad:    { body:'#cfd8dc', belly:'#b0bec5', out:'#263238', cheek:'#b0bec5' },
+      cry:    { body:'#bbdefb', belly:'#90caf9', out:'#0d47a1', cheek:'#90caf9' },
+      sick:   { body:'#dcedc8', belly:'#c5e1a5', out:'#33691e', cheek:'#a5d6a7' },
+      dead:   { body:'#e0e0e0', belly:'#bdbdbd', out:'#616161', cheek:'#bdbdbd' },
+    },
+    headDeco: (C) => `
+      <!-- 頭の上のゆらゆら突起 -->
+      <ellipse cx="60" cy="22" rx="5" ry="8" fill="${C.body}" stroke="${C.out}" stroke-width="1.5"/>
+      <ellipse cx="44" cy="28" rx="4" ry="7" fill="${C.body}" stroke="${C.out}" stroke-width="1.5"/>
+      <ellipse cx="76" cy="28" rx="4" ry="7" fill="${C.body}" stroke="${C.out}" stroke-width="1.5"/>`,
+  },
+};
+
+/* ════════════════════════════════════════
+   PET SVG DRAWING（共通）
+════════════════════════════════════════ */
+function drawPet() {
+  const svg  = document.getElementById('petSvg');
+  const pet  = PETS[currentPetId] || PETS.ribbon;
+  const h = state.hunger, m = state.mood;
+
+  let face;
+  if      (state.dead)         face = 'dead';
+  else if (state.sick)         face = 'sick';
+  else if (h <= 20 || m <= 20) face = 'cry';
+  else if (h <= 40 || m <= 40) face = 'sad';
+  else if (h >= 80 && m >= 80) face = 'happy';
+  else                          face = 'normal';
+
+  const C = pet.colors[face];
+
+  /* ── 目 ── */
+  const eyeMap = {
+    happy: `
+      <path d="M43 66 Q47 61 51 66" stroke="${C.out}" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M69 66 Q73 61 77 66" stroke="${C.out}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    normal: `
+      <circle cx="47" cy="67" r="5.5" fill="${C.out}"/>
+      <circle cx="73" cy="67" r="5.5" fill="${C.out}"/>
+      <circle cx="45" cy="65" r="2"   fill="white"/>
+      <circle cx="71" cy="65" r="2"   fill="white"/>`,
+    sad: `
+      <circle cx="47" cy="69" r="5.5" fill="${C.out}"/>
+      <circle cx="73" cy="69" r="5.5" fill="${C.out}"/>
+      <circle cx="45" cy="67" r="2"   fill="white"/>
+      <circle cx="71" cy="67" r="2"   fill="white"/>
+      <path d="M42 62 Q47 65 52 62" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M68 62 Q73 65 78 62" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    cry: `
+      <circle cx="47" cy="69" r="5.5" fill="${C.out}"/>
+      <circle cx="73" cy="69" r="5.5" fill="${C.out}"/>
+      <path d="M42 62 Q47 65 52 62" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M68 62 Q73 65 78 62" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="45" cy="80" rx="3" ry="6" fill="#42a5f5" opacity=".8"/>
+      <ellipse cx="71" cy="80" rx="3" ry="6" fill="#42a5f5" opacity=".8"/>`,
+    sick: `
+      <line x1="42" y1="62" x2="52" y2="72" stroke="${C.out}" stroke-width="3" stroke-linecap="round"/>
+      <line x1="52" y1="62" x2="42" y2="72" stroke="${C.out}" stroke-width="3" stroke-linecap="round"/>
+      <line x1="68" y1="62" x2="78" y2="72" stroke="${C.out}" stroke-width="3" stroke-linecap="round"/>
+      <line x1="78" y1="62" x2="68" y2="72" stroke="${C.out}" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="60" cy="83" rx="7" ry="5" fill="#aed581" opacity=".75"/>`,
+    dead: `
+      <text x="32" y="75" font-size="15" fill="${C.out}" font-family="monospace" font-weight="bold">@</text>
+      <text x="58" y="75" font-size="15" fill="${C.out}" font-family="monospace" font-weight="bold">@</text>`,
+  };
+
+  /* ── 口 ── */
+  const mouthMap = {
+    happy:  `<path d="M48 82 Q60 95 72 82" stroke="${C.out}" stroke-width="2.5" fill="${C.cheek}" opacity=".55" stroke-linecap="round"/>`,
+    normal: `<ellipse cx="60" cy="84" rx="7" ry="4" fill="${C.out}" opacity=".7"/>`,
+    sad:    `<path d="M50 89 Q60 82 70 89" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    cry:    `<path d="M49 91 Q60 82 71 91" stroke="${C.out}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`,
+    sick:   `<path d="M51 87 Q60 84 69 87" stroke="${C.out}" stroke-width="2"   fill="none" stroke-linecap="round"/>`,
+    dead:   `<path d="M51 86 Q60 84 69 86" stroke="${C.out}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  };
+
+  svg.innerHTML = `
+    <!-- 影 -->
+    <ellipse cx="60" cy="114" rx="30" ry="5" fill="rgba(0,0,0,.10)"/>
+    <!-- 頭デコ（耳・リボンなど）※頭より先に描いて頭が上に来る -->
+    ${pet.headDeco(C)}
+    <!-- 大きな頭 -->
+    <circle cx="60" cy="68" r="44" fill="${C.body}" stroke="${C.out}" stroke-width="2.5"/>
+    <!-- 光沢 -->
+    <ellipse cx="44" cy="46" rx="12" ry="8" fill="white" opacity=".22" transform="rotate(-20 44 46)"/>
+    <!-- ほっぺ -->
+    <ellipse cx="22" cy="76" rx="10" ry="8" fill="${C.cheek}" opacity=".65"/>
+    <ellipse cx="98" cy="76" rx="10" ry="8" fill="${C.cheek}" opacity=".65"/>
+    <!-- 目 -->
+    ${eyeMap[face]}
+    <!-- 口 -->
+    ${mouthMap[face]}
+  `;
+}
+
+/* ════════════════════════════════════════
+   キャラ選択
+════════════════════════════════════════ */
+function selectPet(id) {
+  if (!PETS[id]) return;
+  currentPetId = id;
+  localStorage.setItem(PET_KEY, id);
+
+  // ボタンのactive切り替え
+  document.querySelectorAll('.char-btn').forEach(btn => btn.classList.remove('active'));
+  const target = document.getElementById('charBtn-' + id);
+  if (target) target.classList.add('active');
+
+  drawPet();
+}
+
+/* ════════════════════════════════════════
+   BOOT
+════════════════════════════════════════ */
+loadState();
+selectPet(currentPetId);   // activeボタン反映 + 初回描画
+for (let i = 0; i < state.poops; i++) spawnPoop();
+renderAll();
+setInterval(() => applyDecay(true), TICK_MS);
+setInterval(renderAge, 1000);
+</script>
+</body>
+</html>
